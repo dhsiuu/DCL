@@ -1,15 +1,12 @@
 __all__ = ["PairwiseSampler"]
 
-import random
 from collections import Iterable
 from collections import defaultdict
 
 import numpy as np
 
 from data import Interaction_IC, Interaction_UI, Interaction_UC
-from utils import DataIterator
-from utils import randint_choice
-from utils import typeassert
+from utils import DataIterator, randint_choice, typeassert
 
 
 class PairwiseSampler(object):
@@ -42,6 +39,15 @@ class PairwiseSampler(object):
         self.num_cates = max(self.item_cate_dict.values()) + 1
         self.num_trainings = sum([len(item) for u, item in self.user_pos_dict.items()])
 
+        self.user_cate_item_dict = {}
+        for user, cates in self.user_cate_dict.items():
+            self.user_cate_item_dict[user] = {}
+            for cate in cates:
+                self.user_cate_item_dict[user][cate] = np.array([], dtype=np.int32)
+            for item in self.user_pos_dict[user]:
+                cate = self.item_cate_dict[item]
+                self.user_cate_item_dict[user][int(cate)] = np.append(self.user_cate_item_dict[user][int(cate)], item)
+
     def _pairwise_sampling_ui(self):
         user_arr = np.array(list(self.user_pos_dict.keys()), dtype=np.int32)
         user_idx = randint_choice(len(user_arr), size=self.num_trainings, replace=True)
@@ -55,8 +61,8 @@ class PairwiseSampler(object):
         user_neg_sample = dict()
 
         for user, pos_len in user_pos_len.items():
-            user2cates = []
             user_pos_sample[user] = []
+            cates_num_dict = defaultdict(int)
 
             cates = self.user_cate_dict[user]
             if len(cates) == 1:
@@ -67,16 +73,15 @@ class PairwiseSampler(object):
             pos_idx = pos_idx if isinstance(pos_idx, Iterable) else [pos_idx]
 
             for idx in pos_idx:
-                user2cates.append(cates[idx])
+                cates_num_dict[cates[idx]] += 1
 
-            user2items = self.user_pos_dict[user]
-
-            for cate in user2cates:
-                items_belonged_cate = []
-                for user2item in user2items:
-                    if self.item_cate_dict[user2item] == cate:
-                        items_belonged_cate.append(user2item)
-                user_pos_sample[user].append(random.choice(items_belonged_cate))
+            for cate, leng in cates_num_dict.items():
+                if len(self.user_cate_item_dict[user][cate]) == 1:
+                    item_idx = [0] * leng
+                else:
+                    item_idx = randint_choice(len(self.user_cate_item_dict[user][cate]), size=leng, replace=True)
+                item_idx = item_idx if isinstance(item_idx, Iterable) else [item_idx]
+                user_pos_sample[user].extend(self.user_cate_item_dict[user][cate][item_idx])
 
             user_neg_sample[user] = list()
 
@@ -90,8 +95,7 @@ class PairwiseSampler(object):
                     if len(candidate_items_list) > 0:
                         neg_item = int(np.random.choice(candidate_items_list, size=1))
                     else:
-                        neg_item = randint_choice(self.num_items, size=1, replace=True,
-                                                  exclusion=self.user_pos_dict[user])
+                        neg_item = randint_choice(self.num_items, size=1, replace=True, exclusion=self.user_pos_dict[user])
                 else:
                     neg_item = randint_choice(self.num_items, size=1, replace=True, exclusion=self.user_pos_dict[user])
 
@@ -100,7 +104,7 @@ class PairwiseSampler(object):
         pos_items_list = [user_pos_sample[user].pop() for user in users_list]
         neg_items_list = [user_neg_sample[user].pop() for user in users_list]
 
-        return users_list, pos_items_list, neg_items_list,
+        return users_list, pos_items_list, neg_items_list
 
     def _pairwise_sampling_ic(self):
         item_arr = np.array(list(self.item_cate_dict.keys()), dtype=np.int32)
@@ -138,7 +142,10 @@ class PairwiseSampler(object):
         for user, pos_len in user_pos_len.items():
             user_sample[user] = list()
             pos_cates = self.user_cate_dict[user]
-            neg_cates = randint_choice(self.num_cates, size=pos_len, replace=True, exclusion=pos_cates)
+            if len(pos_cates) == self.num_cates:
+                neg_cates = randint_choice(self.num_cates, size=pos_len, replace=True)
+            else:
+                neg_cates = randint_choice(self.num_cates, size=pos_len, replace=True, exclusion=pos_cates)
             neg_cates = neg_cates if isinstance(neg_cates, Iterable) else [neg_cates]
             user_sample[user] = list(neg_cates)
 

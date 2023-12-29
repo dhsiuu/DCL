@@ -311,7 +311,7 @@ class DCL(object):
                                           bat_items2, bat_cates2)
 
                 # BPR Loss
-                bpr_loss = -torch.sum(F.logsigmoid(sup_logits))
+                bpr_loss = -5 * torch.sum(F.logsigmoid(sup_logits))
 
                 # Reg Loss
                 reg_loss = l2_loss(

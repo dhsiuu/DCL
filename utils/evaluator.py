@@ -164,7 +164,8 @@ class Evaluator(object):
                     ranking_score[idx][train_items] = -np.inf
                     toplist = ranking_score[idx]
                     topid = heapq.nlargest(self.max_top, range(len(toplist)), toplist.__getitem__)
-                    count = np.unique(self.cate[topid], return_counts=True)[1]
+                    allone = np.ones_like(topid)
+                    count = np.unique(self.cate[topid-allone], return_counts=True)[1]
                     coverage_sum += count.size
                     entropy_sum += entropy(count)
                     count = np.sort(count)

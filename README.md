@@ -14,6 +14,11 @@ The code runs well under python 3.9. The required packages are as follows:
 
 ## Quick Start
 
-Specify dataset and other hypermeters in configuration file *./conf/model_config.ini* and *./conf/training_config.ini*.
+First, specify dataset and other hypermeters in configuration file *model_config.ini* and *training_config.ini*.
 
-Then, run [main.py](./main.py) in IDE.
+Then, compline the evaluator of cpp implementation with the following command line:
+```bash
+python local_compile_setup.py build_ext --inplace
+```
+
+Finally, run [main.py](./main.py) in IDE.
